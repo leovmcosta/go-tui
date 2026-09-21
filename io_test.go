@@ -33,13 +33,15 @@ func TestChanIO_Forward(t *testing.T) {
 	cio, stdout := chainIOforTest(t, 12, 3)
 
 	// write 5 lines
-	fmt.Fprint(cio, "a\nb\nc\nd\ne\n")
+	_, err := fmt.Fprint(cio, "a\nb\nc\nd\ne\n")
+	assert.NoError(t, err)
 
 	// render 3 lines due to the viewport height
 	assert.Equal(t, "\rc           \n\rd           \n\re           ", <-stdout.C)
 
 	// write one more line
-	fmt.Fprint(cio, "f\n")
+	_, err = fmt.Fprint(cio, "f\n")
+	assert.NoError(t, err)
 
 	// and have the previous two lines still rendered
 	assert.Equal(t,
@@ -76,7 +78,8 @@ func TestChanIO_Forward(t *testing.T) {
 		<-stdout.C)
 
 	// write one more line
-	fmt.Fprint(cio, "g\n")
+	_, err = fmt.Fprint(cio, "g\n")
+	assert.NoError(t, err)
 
 	assert.Equal(t,
 		"\x1b[3A\r\x1b[K\x1b[1B\r\x1b[K\x1b[3A\r\r\r... s: A   \n\r\r           \n\rg           ",

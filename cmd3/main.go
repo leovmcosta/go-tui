@@ -16,7 +16,10 @@ import (
 //nolint:funlen,gocognit,cyclop // example
 func main() {
 	ctx := context.Background()
-	w := tui.NewIO(ctx)
+	w, err := tui.NewIO(ctx)
+	if err != nil {
+		panic(err)
+	}
 
 	s, err := tui.NewSpinners(tui.WithOutput(w), tui.WithContext(ctx))
 	if err != nil {
@@ -29,7 +32,7 @@ func main() {
 		go func(j int) {
 			defer wg.Done()
 			local := s.MustAddBackground(tui.WithPrefixf("spinner %d", j))
-			defer local.Close()
+			defer local.Close() //nolint:errcheck // example
 			for k := range 10 {
 				local.Updatef("task %d", k)
 				time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
@@ -58,7 +61,7 @@ func main() {
 	go func() {
 		var counter int
 		var third *tui.Spinner
-		raw, _ := os.ReadFile("/usr/share/dict/words")
+		raw, _ := os.ReadFile("/usr/share/dict/words") //nolint:errcheck // example
 		words := strings.Split(string(raw), "\n")
 		ticks := time.NewTicker(333 * time.Millisecond)
 		for {
@@ -70,7 +73,7 @@ func main() {
 				word := words[rand.Intn(len(words))]
 				first.Update("word of the first: " + word)
 				if counter == 10 {
-					first.Close()
+					first.Close() //nolint:errcheck // example
 				}
 				if counter > 11 {
 					if third == nil {

@@ -39,7 +39,7 @@ func ExampleDropdown_withStructs() {
 }
 
 func ExampleDropdown_withLargeList() {
-	raw, _ := os.ReadFile("/usr/share/dict/words")
+	raw, _ := os.ReadFile("/usr/share/dict/words") //nolint:errcheck // example
 	words := strings.Split(string(raw), "\n")
 	rand.Shuffle(len(words), func(i, j int) {
 		words[i], words[j] = words[j], words[i]

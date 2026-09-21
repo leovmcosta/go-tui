@@ -78,7 +78,10 @@ func NewSpinners(opt ...opt) (*Spinners, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.io.Restore() // todo: hack, fix this
+	err = s.io.Restore() // todo: hack, fix this
+	if err != nil {
+		return nil, fmt.Errorf("restore: %w", err)
+	}
 	go s.start(s.ctx)
 
 	return s, nil
@@ -194,6 +197,7 @@ func (s *Spinners) stopSpinner(offset int) {
 	}
 }
 
+//nolint:errcheck // TODO: add error handling in Spinners state
 func (s *Spinners) redraw(prevActive int) int {
 	frame := bytes.NewBuffer(make([]byte, 2*s.io.Width))
 	frame.Reset()
@@ -229,6 +233,7 @@ func (s *Spinners) Close() {
 	s.cancel()
 }
 
+//nolint:errcheck // TODO: handle error
 func (s *Spinners) stop() {
 	// s.wg.Wait()
 	s.io.clear(s.displayed, s.io)
@@ -373,6 +378,7 @@ type Spinner struct {
 	offset int
 }
 
+//nolint:errcheck // TODO: handle error
 func (s *Spinner) monitor(ctx context.Context) {
 	defer s.Close() // we send the stop to the parent with the offset
 	select {        // whether parent or self context is done

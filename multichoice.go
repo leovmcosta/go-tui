@@ -99,7 +99,10 @@ func (m *multichoice) render(io *termIO, buf *viewport) error {
 	}
 	var item bbuf
 	var itemW int
-	buf.WriteByte('\r') // ensure we start from the leftmost position
+	err = buf.WriteByte('\r') // ensure we start from the leftmost position
+	if err != nil {
+		return fmt.Errorf("rewind: %w", err)
+	}
 	label := m.labelBuf.Bytes()
 	// TODO: we still have issues when label overflows the terminal width - some terminals wrap it, some don't.
 	// proper solution would be to use viewports and scroll the label as well
@@ -107,9 +110,18 @@ func (m *multichoice) render(io *termIO, buf *viewport) error {
 	if prefix > io.Width {
 		label = truncateVisible(label, io.Width-1, ' ')
 	}
-	buf.Write(label)
-	buf.WriteByte('\n')
-	buf.WriteByte('\r')
+	_, err = buf.Write(label)
+	if err != nil {
+		return fmt.Errorf("label: %w", err)
+	}
+	err = buf.WriteByte('\n')
+	if err != nil {
+		return fmt.Errorf("newline: %w", err)
+	}
+	err = buf.WriteByte('\r')
+	if err != nil {
+		return fmt.Errorf("rewind: %w", err)
+	}
 	for i, j := range m.displayed {
 		if i == m.active {
 			item = nil // clear buffer
@@ -127,16 +139,31 @@ func (m *multichoice) render(io *termIO, buf *viewport) error {
 			// this may fail if active item is wider than the terminal, but we can solve this later
 			item = truncateVisible(item, io.Width-1, '\n')
 		}
-		buf.Write(item)
+		_, err = buf.Write(item)
+		if err != nil {
+			return fmt.Errorf("write: %w", err)
+		}
 	}
 	if total > len(m.displayed) {
-		buf.WriteByte('\r') // always display a line to avoid flickering
-		if m.offset+height < total {
-			buf.Write(bufMore)
+		err = buf.WriteByte('\r') // always display a line to avoid flickering
+		if err != nil {
+			return fmt.Errorf("rewind: %w", err)
 		}
-		buf.WriteByte('\n')
+		if m.offset+height < total {
+			_, err = buf.Write(bufMore)
+			if err != nil {
+				return fmt.Errorf("more: %w", err)
+			}
+		}
+		err = buf.WriteByte('\n')
+		if err != nil {
+			return fmt.Errorf("newline: %w", err)
+		}
 	}
-	buf.WriteByte('\r')
+	err = buf.WriteByte('\r')
+	if err != nil {
+		return fmt.Errorf("rewind: %w", err)
+	}
 
 	return nil
 }
@@ -147,13 +174,13 @@ type multichoiceItem struct {
 	Active   bool
 }
 
-//nolint:cyclop // TODO: unfinished
+//nolint:cyclop,errcheck // TODO: unfinished
 func (m *multichoice) run() error {
 	io, err := m.makeTermIO(m.in, m.out)
 	if err != nil {
 		return fmt.Errorf("raw term: %w", err)
 	}
-	defer io.Restore()
+	defer io.Restore() //nolint:errcheck // best effort
 	if io.Height < 3 {
 		return ErrNoSpace
 	}

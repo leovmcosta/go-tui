@@ -86,7 +86,7 @@ func (p *input) run() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer io.Restore()
+	defer io.Restore() //nolint:errcheck // we can't do much about it here
 	var frame bytes.Buffer
 	for {
 		err = p.labelTemplate.Execute(&frame, p.Label)
@@ -119,14 +119,17 @@ func (p *input) run() (string, error) {
 
 func (p *input) pressKey(io *termIO, frame *bytes.Buffer) (string, error) {
 	key, err := io.ReadRune()
-	io.clear(1, frame)
 	if err != nil {
 		if errors.Is(err, ErrUnknownRune) {
 			return "", nil
 		}
-		frame.WriteTo(io) // clear the screen
+		frame.WriteTo(io) //nolint:errcheck // clear the screen
 		// Ctrl+C or Ctrl+D
-		return "", err
+		return "", fmt.Errorf("read: %w", err)
+	}
+	err = io.clear(1, frame)
+	if err != nil {
+		return "", fmt.Errorf("clear: %w", err)
 	}
 	switch key {
 	case keyEnter:
@@ -144,7 +147,10 @@ func (p *input) pressKey(io *termIO, frame *bytes.Buffer) (string, error) {
 }
 
 func (p *input) pressEnter(frame *bytes.Buffer, io *termIO) (string, error) {
-	frame.WriteTo(io)
+	_, err := frame.WriteTo(io)
+	if err != nil {
+		return "", fmt.Errorf("write: %w", err)
+	}
 
 	return string(p.typed), nil
 }

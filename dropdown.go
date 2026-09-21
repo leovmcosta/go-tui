@@ -148,24 +148,21 @@ func DropdownLazy[V any](label string, itemFn iter.Seq2[V, error], o ...opt) (V,
 			}
 		}
 	}()
-	i, err := dropdownIndex(d, o...)
+	i, err := d.dropdownIndex(o...)
 	if err != nil {
 		return zero, err
 	}
 	item := d.Items[i]
-	if !d.Hide {
-		var buf bytes.Buffer
-		err = d.answerTemplate.Execute(&buf, dropdownAnswer{
-			Label:  label,
-			Answer: item,
-		})
-		if err != nil {
-			return zero, fmt.Errorf("answer: %w", err)
-		}
-		buf.WriteTo(d.out)
+	err = d.showAnswer(label, item)
+	if err != nil {
+		return zero, fmt.Errorf("answer: %w", err)
+	}
+	valid, ok := item.(V)
+	if !ok { // should never happen
+		return zero, fmt.Errorf("%w: expected %T, got %T", ErrInvalidState, valid, item)
 	}
 
-	return item.(V), nil
+	return valid, nil
 }
 
 func DropdownIndex(label string, items []any, o ...opt) (int, error) {
@@ -175,26 +172,38 @@ func DropdownIndex(label string, items []any, o ...opt) (int, error) {
 	}
 	d.Label = label
 	d.Items = items
-	i, err := dropdownIndex(d, o...)
+	i, err := d.dropdownIndex(o...)
 	if err != nil {
 		return -1, err
 	}
-	if !d.Hide {
-		var buf bytes.Buffer
-		err = d.answerTemplate.Execute(&buf, dropdownAnswer{
-			Label:  label,
-			Answer: items[i],
-		})
-		if err != nil {
-			return i, fmt.Errorf("answer: %w", err)
-		}
-		buf.WriteTo(d.out)
+	err = d.showAnswer(label, items[i])
+	if err != nil {
+		return -1, fmt.Errorf("answer: %w", err)
 	}
 
 	return i, nil
 }
 
-func dropdownIndex(d *dropdown, o ...opt) (int, error) {
+func (d *dropdown) showAnswer(label string, item any) error {
+	if d.Hide {
+		return nil
+	}
+	var buf bytes.Buffer
+	err := d.answerTemplate.Execute(&buf, dropdownAnswer{
+		Label:  label,
+		Answer: item,
+	})
+	if err != nil {
+		return fmt.Errorf("answer: %w", err)
+	}
+	_, err = buf.WriteTo(d.out)
+	if err != nil {
+		return fmt.Errorf("write: %w", err)
+	}
+	return nil
+}
+
+func (d *dropdown) dropdownIndex(o ...opt) (int, error) {
 	err := opts(o).Apply(d)
 	if err != nil {
 		return -1, err
@@ -530,7 +539,7 @@ func (d *dropdown) run() (int, error) {
 	if err != nil {
 		return -1, fmt.Errorf("raw term: %w", err)
 	}
-	defer io.Restore()
+	defer io.Restore() //nolint:errcheck // we can't do much about it here
 	if io.Height < 3 {
 		return -1, ErrNoSpace
 	}
@@ -552,7 +561,10 @@ func (d *dropdown) runRender(io *termIO, frame *bytes.Buffer) (int, error) {
 	if err != nil {
 		return -1, fmt.Errorf("render: %w", err)
 	}
-	frame.WriteTo(io)
+	_, err = frame.WriteTo(io)
+	if err != nil {
+		return -1, fmt.Errorf("write: %w", err)
+	}
 	space := d.height(io)
 	displayed := len(d.displayed)
 	select {
@@ -560,8 +572,14 @@ func (d *dropdown) runRender(io *termIO, frame *bytes.Buffer) (int, error) {
 		err := d.loadItem(io, frame, it, more, space)
 		return -1, err
 	case <-d.Ctx.Done():
-		io.clear(space, frame)
-		frame.WriteTo(io)
+		err = io.clear(space, frame)
+		if err != nil {
+			return -1, fmt.Errorf("clear: %w", err)
+		}
+		_, err = frame.WriteTo(io)
+		if err != nil {
+			return -1, fmt.Errorf("write: %w", err)
+		}
 
 		return -1, d.Ctx.Err()
 	default:
@@ -577,13 +595,16 @@ func (d *dropdown) runMain(io *termIO, frame *bytes.Buffer, space, displayed int
 	if errors.Is(err, ErrUnknownRune) {
 		return -1, nil
 	} else if err != nil {
-		frame.WriteTo(io) // clear the screen
+		frame.WriteTo(io) //nolint:errcheck // we can't do much about it here
 		return -1, err
 	}
 	if i < 0 {
 		return -1, nil
 	}
-	frame.WriteTo(io) // clear the screen
+	_, err = frame.WriteTo(io) // clear the screen
+	if err != nil {
+		return -1, fmt.Errorf("write: %w", err)
+	}
 	return i, nil
 }
 
@@ -596,10 +617,17 @@ func (d *dropdown) loadItem(io *termIO, frame *bytes.Buffer, it itPair, more boo
 		return nil
 	}
 	if it.err != nil {
-		io.clear(space, frame)
-		frame.WriteTo(io)
+		errs := []error{it.err}
+		err := io.clear(space, frame)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("clear: %w", err))
+		}
+		_, err = frame.WriteTo(io)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("write: %w", err))
+		}
 
-		return it.err
+		return errors.Join(errs...)
 	}
 	d.Items = append(d.Items, it.item)
 	d.inactive = append(d.inactive, nil)
@@ -613,8 +641,18 @@ func (d *dropdown) loadItem(io *termIO, frame *bytes.Buffer, it itPair, more boo
 	// if len(d.relevant) > displayed {
 	// 	space += 2
 	// }
-	io.clear(io.Height, frame)
-	frame.WriteTo(io)
+	var errs []error
+	err = io.clear(io.Height, frame)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("clear: %w", err))
+	}
+	_, err = frame.WriteTo(io)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("write: %w", err))
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 
 	return nil
 }
@@ -630,7 +668,10 @@ func (d *dropdown) pressKey(io *termIO, frame *bytes.Buffer, space, displayed in
 	}
 	switch key {
 	case keyEnter:
-		frame.WriteTo(io) // TODO: check if we can just defer it from beginning of the method
+		_, err := frame.WriteTo(io) // TODO: check if we can just defer it from beginning of the method
+		if err != nil {
+			return -1, fmt.Errorf("write: %w", err)
+		}
 
 		return d.offset + d.selected, nil
 	case '↑':

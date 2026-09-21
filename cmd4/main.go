@@ -34,7 +34,7 @@ func main() {
 		third.Update("Processing task 3... A")
 		second.Update("Processing task 2... A")
 		time.Sleep(2 * time.Second)
-		first.Close() // removes first spinner
+		first.Close() //nolint:errcheck // removes first spinner
 		third.Update("Processing task 3... B")
 	}()
 

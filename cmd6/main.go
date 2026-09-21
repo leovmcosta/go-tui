@@ -39,5 +39,5 @@ func main() {
 				}},
 			}, "two", 3.14, true, nil},
 	}
-	tui.PrettyJSON(os.Stdout, data)
+	tui.PrettyJSON(os.Stdout, data) //nolint:errcheck // example
 }

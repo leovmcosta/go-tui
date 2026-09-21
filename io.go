@@ -51,13 +51,16 @@ func newUnstartedIO(ctx context.Context, width, height int) *chanIO {
 	return cio
 }
 
-func NewIO(ctx context.Context) *chanIO {
-	w, h, _ := term.GetSize(int(os.Stderr.Fd()))
+func NewIO(ctx context.Context) (*chanIO, error) {
+	w, h, err := term.GetSize(int(os.Stderr.Fd()))
+	if err != nil {
+		return nil, fmt.Errorf("get size: %w", err)
+	}
 	cio := newUnstartedIO(ctx, w, h)
 	go cio.handleViewports(ctx)
 	go cio.forwardTo(ctx, os.Stderr)
 	// go io.Copy(cio, os.Stdin) // FIXME: stdin forwarding is not working
-	return cio
+	return cio, nil
 }
 
 // implements [io.ReadWriter].
@@ -117,7 +120,7 @@ func (i *chanIO) handleViewports(ctx context.Context) {
 			}
 		case line := <-i.Out:
 			// [chainIO.forwardTo] will flush the actual writer
-			i.tail.Write([]byte(line))
+			i.tail.Write([]byte(line)) //nolint:errcheck // TODO: handle error
 		}
 	}
 }
@@ -150,9 +153,9 @@ func (i *chanIO) forwardTo(ctx context.Context, w io.Writer) {
 			}
 			currH = i.head.combinedHeight()
 			prevH = currH
-			i.head.WriteTo(&buf)
+			i.head.WriteTo(&buf) //nolint:errcheck // TODO: handle error
 			x := buf.Bytes()
-			w.Write(x[:len(x)-1]) // trim last newline
+			w.Write(x[:len(x)-1]) //nolint:errcheck // trim last newline
 			// _, _ = buf.WriteTo(w)
 		}
 	}

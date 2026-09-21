@@ -81,7 +81,7 @@ func (p *Progressbar) Close() error {
 }
 
 func (p *Progressbar) start(ctx context.Context) {
-	defer p.stop()
+	defer p.stop() //nolint:errcheck // best effort
 	frame := bytes.NewBuffer(make([]byte, 2*p.io.Width))
 	frame.Reset()
 	labelWidth := width([]byte(p.label)) + 1

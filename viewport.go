@@ -5,6 +5,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"io"
 )
 
@@ -122,12 +123,11 @@ func (v *viewport) writeTo(w io.Writer) (int64, int, error) {
 	var lines int
 	var bytes int64
 	for _, l := range v.lines {
-		w.Write([]byte{'\r'})
-		b, err := w.Write(l)
+		b, err := fmt.Fprintf(w, "\r%s", l)
 		if err != nil {
 			return bytes, lines, err
 		}
-		bytes += int64(b) + 1
+		bytes += int64(b)
 		lines++
 	}
 

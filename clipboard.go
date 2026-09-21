@@ -13,7 +13,7 @@ import (
 type clipboard struct{}
 
 func ShouldPasteFromClipboard() string {
-	content, _ := (&clipboard{}).Read()
+	content, _ := (&clipboard{}).Read() //nolint:errcheck // ignore clipboard errors
 
 	return content
 }

@@ -90,6 +90,7 @@ func (t *termIO) Write(p []byte) (n int, err error) {
 	return t.out.Write(p)
 }
 
+//nolint:errcheck // TODO: improve error handling
 func (t *termIO) clear(space int, buf io.Writer) error {
 	if t.vp != nil {
 		if t.vp.fixedHeight {

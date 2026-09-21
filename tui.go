@@ -5,14 +5,18 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"os"
 )
 
 func NewTUI(ctx context.Context, opts ...opt) (*Tui, error) {
-	cio := NewIO(ctx)
+	cio, err := NewIO(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("io: %w", err)
+	}
 	tio, err := makeTermIO(os.Stdin, cio)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("term: %w", err)
 	}
 
 	return &Tui{

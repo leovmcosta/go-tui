@@ -62,7 +62,7 @@ func Password(label string, option ...opt) (string, error) {
 	return p.run()
 }
 
-//nolint:cyclop // TODO: expand input to support replacement chars and remove this
+//nolint:cyclop,errcheck // TODO: expand input to support replacement chars and remove this
 func (p *password) run() (string, error) {
 	io, err := p.makeTermIO(p.in, p.out)
 	if err != nil {
