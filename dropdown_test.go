@@ -12,6 +12,7 @@ import (
 )
 
 func testIOforDropdown(t *testing.T, width, height int, o ...opt) (*chanIO, opt) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	cio := &chanIO{
 		ctx: ctx,
@@ -51,6 +52,7 @@ func testIOforDropdown(t *testing.T, width, height int, o ...opt) (*chanIO, opt)
 }
 
 func confirmForTest(t *testing.T) (in, out chan string, result chan bool) {
+	t.Helper()
 	cio, opts := testIOforDropdown(t, 80, 120)
 	result = make(chan bool)
 	go func() {
@@ -103,6 +105,7 @@ func TestDownAndUpCase(t *testing.T) {
 }
 
 func overflowForTest(t *testing.T) (in, out chan string, result chan string) {
+	t.Helper()
 	cio, opts := testIOforDropdown(t, 12, 4)
 	result = make(chan string)
 	go func() {
@@ -168,6 +171,7 @@ func TestMoreItemsUp(t *testing.T) {
 }
 
 func otherDropdownForTest(t *testing.T) (in, out chan string, result chan string) {
+	t.Helper()
 	cio, opts := testIOforDropdown(t, 12, 4)
 	result = make(chan string)
 	go func() {

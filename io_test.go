@@ -13,6 +13,7 @@ import (
 )
 
 func chainIOforTest(t *testing.T, width, height int) (*chanIO, *writeC) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	realOut := newWriteC(ctx)
 	cio := newUnstartedIO(ctx, width, height)

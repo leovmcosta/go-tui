@@ -13,6 +13,7 @@ import (
 )
 
 func testIOforSpinners(t *testing.T, width, height int, o ...opt) (*chanIO, func(), opt) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	cio := &chanIO{
 		ctx: ctx,
@@ -58,6 +59,7 @@ func testIOforSpinners(t *testing.T, width, height int, o ...opt) (*chanIO, func
 }
 
 func spinnersForTest(t *testing.T) (*Spinners, *chanIO, func()) {
+	t.Helper()
 	cio, tick, opts := testIOforSpinners(t, 12, 4)
 	s, err := NewSpinners(opts)
 	assert.NoError(t, err)
